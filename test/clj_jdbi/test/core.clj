@@ -35,11 +35,17 @@
       )))
 
 
-(with-derby
-  (let [dbi (create-dbi "jdbc:derby:testing")]
-    (deftest basic-connectivity
-      (is (not (nil? dbi))))
-    (deftest insert-select
+(defn- create-test-dbi []
+  (create-dbi "jdbc:derby:testing"))
+
+(defmacro insert-test-data []
+  `(doseq [x# (range 1000)]
+    (insert "insert into foo values (:id, :name, :val)" x# (str "name" x#) (* 10 x#))))
+
+
+(deftest insert-select
+  (let [dbi (create-test-dbi)]
+    (with-derby
       (with-dbi dbi
 	(with-handle
 	  (is (=
@@ -58,3 +64,48 @@
 	       "baz"))
 	  )))
     ))
+
+(deftest query-max-rows
+  (with-derby
+    (with-dbi (create-test-dbi)
+      (with-handle
+	(insert-test-data)
+	(let [query (query-create "select * from foo" :max-rows 10)
+	      result (query-list query)]
+	  (is (= (count result) 10))))
+      )))
+
+(deftest query-bind
+  (with-derby
+    (with-dbi (create-test-dbi)
+      (with-handle
+	(insert-test-data)
+	(let [query (query-create "select * from foo where id < :id" :bind {:id 5})
+	      result (query-list query)]
+	  (is (= (count result) 5))
+	  (is (= (set (map :id result))
+		 (set (range 5))))
+	   )))))
+
+(deftest test-query-first
+  (with-derby
+    (with-dbi (create-test-dbi)
+      (with-handle
+	(insert-test-data)
+	(let [query (query-create "select count(*) c from foo")
+	      result (query-first query)]
+	  (is (map? result))
+	  (is (= (:c result)
+		 1000))
+	   )))))
+
+(deftest fold
+  (with-derby
+    (with-dbi (create-test-dbi)
+      (with-handle
+	(insert-test-data)
+	(let [query (query-create "select id from foo" :fetch-size 10)
+	      result (query-fold query 0 (fn [acc rs ctx] (+ acc (. rs getInt "id"))))]
+	  (is (= (apply + (range 1000))
+		 result))
+	   )))))

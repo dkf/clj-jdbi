@@ -1,14 +1,22 @@
 (ns clj-jdbi.core
   (:import
-   [org.skife.jdbi.v2 DBI]
-   [clojure.lang PersistentHashMap]))
+   [org.skife.jdbi.v2 DBI Handle Query Folder2]
+   [org.skife.jdbi.v2.tweak ConnectionFactory]
+   [clojure.lang PersistentHashMap]
+   [javax.sql DataSource]))
 
-(def *dbi* nil)
-(def *handle* nil)
+(def ^DBI *dbi* nil)
+(def ^Handle *handle* nil)
 
 (defn create-dbi
-  ([url] (DBI. url))
-  ([url user pass] (DBI. url user pass)))
+  ([^String url] (DBI. url))
+  ([^String url ^String user ^String pass] (DBI. url user pass)))
+
+(defn create-dbi-from-data-source [^DataSource data-source]
+  (DBI. data-source))
+
+(defn create-dbi-from-connection-factory [^ConnectionFactory conn-factory]
+  (DBI. conn-factory))
 
 (defmacro bind-dbi [dbi & body]
   `(binding [*dbi* ~dbi]
@@ -87,3 +95,36 @@
 
 (defn execute [sql & args]
   (. *handle* execute sql (into-array Object args)))
+
+(defn query-create [sql & options]
+  (let [opts (merge {:bind {}} (apply hash-map options))
+	query (. *handle* createQuery sql)]
+    (when-let [fetch-size (:fetch-size opts)]
+      (.setFetchSize query fetch-size))
+    (when-let [max-rows (:max-rows opts)]
+      (.setMaxRows query max-rows))
+    (when-let [max-field-size (:max-field-size opts)]
+      (.setMaxFieldSize query max-field-size))
+    (if (= true (:reverse opts))
+      (.fetchReverse query))
+    (if (= true (:forward opts))
+      (.fetchForward query))
+    (doseq [kv (:bind opts)]
+      (.bind query (name (first kv)) (second kv)))
+    query))
+
+(defn query-list [^Query query]
+  (doall
+   (map
+    #(keywordize-map (PersistentHashMap/create %))
+    (.list query))))
+
+
+(defn query-first [^Query query]
+  (keywordize-map (PersistentHashMap/create (.first query))))
+
+(defn query-fold [query initial folder]
+  (.fold query initial
+	 (reify Folder2
+	   (fold [this acc rs ctx]
+	     (folder acc rs ctx)))))
