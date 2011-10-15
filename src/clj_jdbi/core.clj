@@ -3,6 +3,7 @@
    [org.skife.jdbi.v2 DBI Handle Query Folder2 PreparedBatch]
    [org.skife.jdbi.v2.tweak ConnectionFactory]
    [clojure.lang PersistentHashMap]
+   [java.util Map]
    [javax.sql DataSource]))
 
 (def ^DBI *dbi* nil)
@@ -28,12 +29,28 @@
 (defmacro with-dbi ([dbi & body]
   `(bind-dbi ~dbi (do ~@body))))
 
+(defn customize-dbi [^DBI dbi & options]
+  (let [opts (merge {} (apply hash-map options))]
+    (when-let [stmt-locator (:statement-locator opts)]
+      (.setStatementLocator dbi stmt-locator))
+    (when-let [stmt-rewriter (:statement-rewriter opts)]
+      (.setStatementRewriter dbi stmt-rewriter))
+    (when-let [tx-handler (:transaction-handler opts)]
+      (.setTransactionHandler dbi tx-handler))
+    (when-let [stmt-builder-factory (:statement-builder-factory opts)]
+      (.setStatementBuilderFactory dbi stmt-builder-factory))
+    (when-let [sql-log (:sql-log opts)]
+      (.setSQLLog dbi sql-log))
+    (when-let [timing-collector (:timing-collector opts)]
+      (.setTimingCollector dbi timing-collector))
+    dbi))
+
 (defmacro with-handle [& body]
   `(binding [*handle* (. *dbi* open)]
     (try
       (do
 	~@body)
-      (finally (when (not (nil? *handle*))
+      (finally (when-not (nil? *handle*)
 		 (. *handle* close))))))
 
 (defn handle! []
@@ -84,7 +101,7 @@
 (defn select [sql & args]
   (doall
    (map
-    #(keywordize-map (PersistentHashMap/create %))
+    (fn [^Map m] (keywordize-map (PersistentHashMap/create m)))
     (. *handle* select sql (into-array Object args)))))
 
 (defn insert [sql & args]
@@ -116,14 +133,15 @@
 (defn query-list [^Query query]
   (doall
    (map
-    #(keywordize-map (PersistentHashMap/create %))
+    (fn [^Map m] (keywordize-map (PersistentHashMap/create m)))
     (.list query))))
 
 
 (defn query-first [^Query query]
-  (keywordize-map (PersistentHashMap/create (.first query))))
+  (let [^Map res (.first query)]
+    (keywordize-map (PersistentHashMap/create res))))
 
-(defn query-fold [query initial folder]
+(defn query-fold [^Query query initial folder]
   (.fold query initial
 	 (reify Folder2
 	   (fold [this acc rs ctx]
@@ -133,11 +151,12 @@
   (. *handle* prepareBatch sql))
 
 (defn batch-add-map [^PreparedBatch batch m]
-  (let [stringified (into {} (map #(vector (name (first %)) (second %)) m))]
+  (let [^Map stringified (into {} (map #(vector (name (first %)) (second %)) m))]
     (.add batch stringified)))
 
 (defn batch-add-positional [^PreparedBatch batch & positional]
-  (.add batch (into-array Object positional)))
+  (let [^"[Ljava.lang.Object;" a (into-array Object positional)]
+    (.add batch a)))
 
 (defn batch-execute [^PreparedBatch batch]
   (.execute batch))

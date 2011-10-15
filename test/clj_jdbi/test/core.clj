@@ -13,13 +13,13 @@
 
 (defmacro with-derby [& body]
   `(try
-     (let [f# (File. "build/db")
-	   ignore1# (System/setProperty "derby.system.home", "build/db")
-	   ignore2# (.mkdirs f#)
-	   ds# (EmbeddedDataSource.)
-	   ignore3# (.setCreateDatabase ds# "create")
-	   ignore4# (.setDatabaseName ds# "testing")
-	   conn# (.getConnection ds#)
+     (System/setProperty "derby.system.home", "build/db")
+     (let [f# (doto (File. "build/db")
+		(.mkdirs))
+	   ds# (doto (EmbeddedDataSource.)
+		 (.setCreateDatabase "create")
+		 (.setDatabaseName "testing"))
+	   conn# (.getConnection ds#) ;; fail early
 	   ]
        (.close conn#)
        (binding [data-source ds#]
