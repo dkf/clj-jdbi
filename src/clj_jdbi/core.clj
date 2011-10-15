@@ -1,6 +1,6 @@
 (ns clj-jdbi.core
   (:import
-   [org.skife.jdbi.v2 DBI Handle Query Folder2]
+   [org.skife.jdbi.v2 DBI Handle Query Folder2 PreparedBatch]
    [org.skife.jdbi.v2.tweak ConnectionFactory]
    [clojure.lang PersistentHashMap]
    [javax.sql DataSource]))
@@ -128,3 +128,16 @@
 	 (reify Folder2
 	   (fold [this acc rs ctx]
 	     (folder acc rs ctx)))))
+
+(defn batch-prepare [sql]
+  (. *handle* prepareBatch sql))
+
+(defn batch-add-map [^PreparedBatch batch m]
+  (let [stringified (into {} (map #(vector (name (first %)) (second %)) m))]
+    (.add batch stringified)))
+
+(defn batch-add-positional [^PreparedBatch batch & positional]
+  (.add batch (into-array Object positional)))
+
+(defn batch-execute [^PreparedBatch batch]
+  (.execute batch))

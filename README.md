@@ -18,3 +18,4 @@ user> (with-dbi local-db
 
 ## Todo
 * `JDBI` has a ton of features, `clj-jdbi` exposes almost none of them
+* document the createQuery wrapper and the batch wrapper

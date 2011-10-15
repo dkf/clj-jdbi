@@ -109,3 +109,19 @@
 	  (is (= (apply + (range 1000))
 		 result))
 	   )))))
+
+(deftest batch
+  (with-derby
+    (with-dbi (create-test-dbi)
+      (with-handle
+	(let [batch (batch-prepare "insert into foo values (:id, :name, :val)")]
+	  (batch-add-positional batch 1 "foo" 10)
+	  (batch-add-map batch {:id 2 :name "bar" :val 20})
+	  (let [batch-result (batch-execute batch)]
+	    (is (= (count batch-result) 2))
+	    (is (java.util.Arrays/equals batch-result (int-array [1 1]))))
+	  (let [contents (select "select * from foo order by id")]
+	    (is (= (count contents) 2))
+	    (is (= contents
+		   [{:id 1 :name "foo" :value 10} {:id 2 :name "bar" :value 20}])))
+	   )))))
