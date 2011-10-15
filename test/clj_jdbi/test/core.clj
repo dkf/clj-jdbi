@@ -52,6 +52,8 @@
 	  (is (=
 	       (hash-map :id 1 :name "foobar", :value 12)
 	       (first (select "select * from foo"))))
+	  (update "update foo set name = 'baz' where id = 1")
+	  (is (=
+	       (:name (first (select "select * from foo")))))
 	  )))
-    
     ))
