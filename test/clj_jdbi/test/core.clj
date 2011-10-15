@@ -49,8 +49,8 @@
       (with-dbi dbi
 	(with-handle
 	  (is (=
-	       (:c (first (select "select count(*) c from foo"))))
-	      0)
+	       (:c (first (select "select count(*) c from foo")))
+	       0))
 	  (insert "insert into foo values (1, 'foobar', 12)")
 	  (is (=
 	       (:name (first (select "select * from foo")))
