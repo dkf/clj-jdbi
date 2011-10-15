@@ -8,7 +8,7 @@ not nearly ready for real use yet.
 ```clojure
 user> (use 'clj-jdbi.core)
 nil
-user> (def local-db (create-dbi "jdbc:mysql://172.16.2.69/test" "username" "password"))
+user> (def local-db (create-dbi "jdbc:mysql://localhost/test" "username" "password"))
 #'user/local-db
 user> (with-dbi local-db
 	(with-handle
