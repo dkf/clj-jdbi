@@ -12,7 +12,8 @@ user> (def local-db (create-dbi "jdbc:mysql://172.16.2.69/test" "username" "pass
 user> (with-dbi local-db
 	(with-handle
 	  (select "select * from foo limit 2")))
-({:name "foo", :id 1} {:name "bar", :id 2})```
+({:name "foo", :id 1} {:name "bar", :id 2})
+```
 
 ## Todo
 * `JDBI` has a ton of features, `clj-jdbi` exposes almost none of them
