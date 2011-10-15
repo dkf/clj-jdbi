@@ -5,7 +5,8 @@ not nearly ready for real use yet.
 
 ## Usage
 
-```user> (use 'clj-jdbi.core)
+```clojure
+user> (use 'clj-jdbi.core)
 nil
 user> (def local-db (create-dbi "jdbc:mysql://172.16.2.69/test" "username" "password"))
 #'user/local-db
